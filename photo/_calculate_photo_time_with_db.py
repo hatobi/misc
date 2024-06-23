@@ -76,12 +76,14 @@ def calculate_photographing_time(timestamps, break_duration_minutes=10):
     
     return total_duration, total_photographing_time, breaks
 
-def save_results_to_file(folder_path, num_photos, total_duration, break_duration, photographing_time, breaks):
+def save_results_to_file(folder_path, num_photos, total_duration, break_duration, photographing_time, breaks, start_time, end_time):
     """Save the results to a text file."""
-    result_file_path = os.path.join(folder_path, '_photographing_time_report.txt')
+    result_file_path = os.path.join(folder_path, f"_photographing_time_report_{break_duration}min.txt")
     with open(result_file_path, 'w') as file:
         file.write(f"Number of photos processed: {num_photos}\n")
         file.write(f"Total duration (first to last photo): {total_duration}\n")
+        file.write(f"TimeS: {start_time}\n")
+        file.write(f"TimeE: {end_time}\n\n")
         file.write(f"Custom set break duration: {break_duration} minutes\n")
         file.write(f"Total time spent photographing (excluding breaks): {photographing_time}\n")
         file.write("\nList of breaks:\n")
@@ -95,7 +97,18 @@ db_path = os.path.join(folder_path, '_image_timestamps.db')
 
 # Initialize and populate the database if necessary
 initialize_database(db_path)
-populate_database(folder_path, db_path)
+
+# Get the current number of files and the number of database entries
+current_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('nef', 'jpg', 'jpeg', 'png'))]
+conn = sqlite3.connect(db_path)
+cursor = conn.cursor()
+cursor.execute("SELECT COUNT(*) FROM image_timestamps")
+db_file_count = cursor.fetchone()[0]
+conn.close()
+
+# Populate the database if new photos have been added
+if len(current_files) > db_file_count:
+    populate_database(folder_path, db_path)
 
 # Load timestamps from the database
 timestamps = load_timestamps_from_database(db_path)
@@ -115,5 +128,15 @@ while True:
 total_duration, photographing_time, breaks = calculate_photographing_time(timestamps, break_duration_minutes)
 num_photos = len(timestamps)
 
+# Get the start and end times
+if timestamps:
+    start_time = timestamps[0]
+    end_time = timestamps[-1]
+else:
+    start_time = end_time = "No valid timestamps"
+
 # Save results to a text file
-save_results_to_file(folder_path, num_photos, total_duration, break_duration_minutes, photographing_time, breaks)
+save_results_to_file(folder_path, num_photos, total_duration, break_duration_minutes, photographing_time, breaks, start_time, end_time)
+
+# Print the total photographing time excluding breaks
+print(f"Total time spent photographing (excluding breaks): {photographing_time}")
