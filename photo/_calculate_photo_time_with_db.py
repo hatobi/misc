@@ -53,31 +53,45 @@ def load_timestamps_from_database(db_path):
     return timestamps
 
 def calculate_photographing_time(timestamps, break_duration_minutes=10):
-    """Calculate the total photographing time excluding breaks."""
+    """Calculate the total photographing time excluding breaks and list all breaks."""
     if not timestamps:
-        return "No valid images with EXIF timestamps found."
+        return "No valid images with EXIF timestamps found.", [], []
     
     # Sort the timestamps
     timestamps.sort()
     
-    # Calculate total photographing time excluding breaks
-    total_duration = datetime.timedelta()
+    total_duration = timestamps[-1] - timestamps[0]
+    total_photographing_time = datetime.timedelta()
     previous_time = timestamps[0]
-    
+    breaks = []
+
     for current_time in timestamps[1:]:
         duration = current_time - previous_time
         if duration.total_seconds() > break_duration_minutes * 60:
-            # It's a break, so don't add this duration
+            breaks.append((previous_time, current_time))
             previous_time = current_time
         else:
-            total_duration += duration
+            total_photographing_time += duration
             previous_time = current_time
     
-    return total_duration
+    return total_duration, total_photographing_time, breaks
+
+def save_results_to_file(folder_path, num_photos, total_duration, break_duration, photographing_time, breaks):
+    """Save the results to a text file."""
+    result_file_path = os.path.join(folder_path, '_photographing_time_report.txt')
+    with open(result_file_path, 'w') as file:
+        file.write(f"Number of photos processed: {num_photos}\n")
+        file.write(f"Total duration (first to last photo): {total_duration}\n")
+        file.write(f"Custom set break duration: {break_duration} minutes\n")
+        file.write(f"Total time spent photographing (excluding breaks): {photographing_time}\n")
+        file.write("\nList of breaks:\n")
+        for start, end in breaks:
+            file.write(f"Break from {start} to {end}, duration: {end - start}\n")
+    print(f"Results saved to {result_file_path}")
 
 # Use the current directory as the folder path
 folder_path = os.getcwd()
-db_path = os.path.join(folder_path, 'image_timestamps.db')
+db_path = os.path.join(folder_path, '_image_timestamps.db')
 
 # Initialize and populate the database if necessary
 initialize_database(db_path)
@@ -97,6 +111,9 @@ while True:
     except ValueError:
         print("Invalid input. Please enter a number.")
 
-# Calculate the photographing time
-photographing_time = calculate_photographing_time(timestamps, break_duration_minutes)
-print(f"Total time spent photographing (excluding breaks): {photographing_time}")
+# Calculate the photographing time and breaks
+total_duration, photographing_time, breaks = calculate_photographing_time(timestamps, break_duration_minutes)
+num_photos = len(timestamps)
+
+# Save results to a text file
+save_results_to_file(folder_path, num_photos, total_duration, break_duration_minutes, photographing_time, breaks)
