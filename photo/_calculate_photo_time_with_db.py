@@ -91,9 +91,25 @@ def save_results_to_file(folder_path, num_photos, total_duration, break_duration
             file.write(f"Break from {start} to {end}, duration: {end - start}\n")
     print(f"Results saved to {result_file_path}")
 
-# Use the current directory as the folder path
-folder_path = os.getcwd()
-db_path = os.path.join(folder_path, '_image_timestamps.db')
+# Get the folder path from the user
+while True:
+    choice = input("Do you want to run the script on the current path or a custom path? (current/custom): ").strip().lower()
+    if choice in ['current', 'custom']:
+        break
+    else:
+        print("Invalid choice. Please enter 'current' or 'custom'.")
+
+if choice == 'current':
+    folder_path = os.getcwd()
+else:
+    while True:
+        folder_path = input("Please enter the custom path: ").strip()
+        if os.path.isdir(folder_path):
+            break
+        else:
+            print("Invalid folder path. Please enter a valid path.")
+
+db_path = os.path.join(folder_path, 'image_timestamps.db')
 
 # Initialize and populate the database if necessary
 initialize_database(db_path)
